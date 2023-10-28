@@ -3,16 +3,24 @@ from .dep_analyzer import get_deps
 import json
 
 class Context:
+    '''
+    coverage collection context
+    '''
     _instance = None
 
-    def __init__(self, pe: dict[str, dict[int, int]] = None):
+    def __init__(self, n_buckets: int, pe: dict[str, dict[int, int]] = None):
+        self._n_buckets = n_buckets
         self._pe = pe or dict()
 
+    @property
+    def n_buckets(self) -> int:
+        return self._n_buckets
+
     @staticmethod
-    def create(entry: str):
+    def create(n_nuckets: int, entry: str):
         src = get_deps(entry)
         pe = get_positional_encoding(src)
-        return Context(pe)
+        return Context(n_nuckets, pe)
 
     @staticmethod
     def read(f: str):
@@ -23,7 +31,9 @@ class Context:
             for k in pe.keys():
                 pe[k] = dict(pe[k])
 
-            Context._instance = Context(pe=obj['pe'])
+            n_buckets = int(obj['n_buckets'])
+
+            Context._instance = Context(n_buckets=n_buckets, pe=obj['pe'])
 
     @staticmethod
     def get():
@@ -37,5 +47,6 @@ class Context:
 
         with open(f, 'w') as io:
             json.dump({
-                'pe': serialized_pe
+                'pe': serialized_pe,
+                'n_buckets': self.n_buckets
             }, io)

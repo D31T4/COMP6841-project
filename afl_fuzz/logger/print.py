@@ -1,6 +1,7 @@
 from typing import Callable
 from threading import Lock
 from .base import ILogger
+from datetime import datetime
 
 class PrintLogger(ILogger):
     def __init__(self, write: Callable[[str], None] = print):
@@ -9,4 +10,4 @@ class PrintLogger(ILogger):
 
     def write(self, msg: str):
         with self._lock:
-            self._write(msg)
+            self._write(f'{datetime.now()}: {msg}')

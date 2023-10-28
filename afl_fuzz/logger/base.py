@@ -10,3 +10,5 @@ class ILogger(ABC):
         - msg: log message
         '''
         pass
+
+devNullLogger = ILogger()

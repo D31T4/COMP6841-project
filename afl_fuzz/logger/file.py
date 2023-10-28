@@ -1,5 +1,6 @@
 from threading import Lock
 from .base import ILogger
+from datetime import datetime
 
 class FileLogger(ILogger):
     '''
@@ -15,4 +16,4 @@ class FileLogger(ILogger):
     
     def write(self, msg: str):
         with self._lock, open(self.fname, 'a') as f:
-            f.write(msg)
+            f.write(f'{datetime.now()}: {msg}')

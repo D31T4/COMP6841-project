@@ -14,6 +14,17 @@ def randint():
     return random.randint(0, MAX_INT)
 
 def to_binned(val: int):
+    '''
+    convert to binned value
+
+    Arguments:
+    ---
+    - val: value
+
+    Returns:
+    ---
+    - binned value
+    '''
     if val >= 4 and val <= 7:
         return 4
     elif val >= 8 and val <= 15:
@@ -28,19 +39,39 @@ def to_binned(val: int):
         return val
 
 class Hitcount:
+    '''
+    Approximated branch hitcount
+    '''
     def __init__(self, n_buckets: int):
+        '''
+        Arguments:
+        ---
+        - n_buckets: no. of buckets
+        '''
         self._n = n_buckets
         self._buckets = [0] * n_buckets
 
     def add(self, s: int, t: int):
+        '''
+        add edge s->t
+
+        Arguments:
+        ---
+        - s: source
+        - t: target
+        '''
         hash = (s ^ t) % self._n
         self._buckets[hash] = min(self._buckets[hash] + 1, 128)
 
-    def get_binned(self):
+    def get_binned(self) -> list[int]:
         '''
         get binned hitcounts
+
+        Returns:
+        ---
+        - binned hitcounts
         '''
-        out = self._buckets[:]
+        out: list[int] = self._buckets[:]
 
         for i in range(self._n):
             out[i] = to_binned(out[i])
@@ -50,6 +81,14 @@ class Hitcount:
 def get_positional_encoding(files: Iterable[str]):
     '''
     get positional encodings
+
+    Arguments:
+    ---
+    - files to be marked
+
+    Returns:
+    ---
+    - map: filename => (lineno => marker)
     '''
     enc: dict[str, dict[int, int]] = dict()
     exclude_re = join_regex(DEFAULT_EXCLUDE[:])
