@@ -4,24 +4,37 @@ from multiprocessing.pool import ThreadPool
 from afl_fuzz.coverage_collector.process import collect
 from afl_fuzz.coverage_collector.result import CoverageResult
 
-from .state import State
-from .score import update_bitmap_score, calculate_score
-from .config import EXEC_TIMEOUT, CALIBRATE_SAMPLE_SIZE
+from afl_fuzz.afl.state import State
+from afl_fuzz.afl.score import update_bitmap_score
+from afl_fuzz.afl.config import EXEC_TIMEOUT, CALIBRATE_SAMPLE_SIZE
 
-def calibrate(state: State, args: bytes, handicap: int) -> CoverageResult:
+def calibrate(state: State, path: CoverageResult) -> CoverageResult:
+    '''
+    calibrate case
+    '''
+    # we assume cov is already in queue
+    state.op_logger.write('begin calibration')
+
     total_bitmap_size = 0
     total_calc_us = 0
 
     for _ in range(CALIBRATE_SAMPLE_SIZE):
-        cov = collect(state.entry_module, state.ctx_fname, args, timeout=EXEC_TIMEOUT)
-
-        # abort if exception
-        if cov.exception:
-            state.exception_logger.write(f'Exception found: {cov.exception}')
+        try:
+            cov = collect(state.entry_module, state.ctx_fname, path.args, timeout=EXEC_TIMEOUT)
+        except:
+            state.exception_logger.write(f'failed to run exception')
             return None
 
         total_bitmap_size += cov.bitmap_size
         total_calc_us += cov.elapsed
+
+    path.bitmap_size = cov.bitmap_size
+    path.cov_cksum = cov.cov_cksum
+    path.cov = cov.cov
+    path.exception = cov.exception
+
+    path.elapsed = total_calc_us // CALIBRATE_SAMPLE_SIZE
+    path.calibrated = True
 
     with state.lock:
         state.total_bitmap_size += total_bitmap_size
@@ -29,55 +42,93 @@ def calibrate(state: State, args: bytes, handicap: int) -> CoverageResult:
         state.total_cal_cycles += CALIBRATE_SAMPLE_SIZE
         state.total_bitmap_entries += CALIBRATE_SAMPLE_SIZE
 
-        state.queue.push(args)
+        update_bitmap_score(state, path)
 
-        update_bitmap_score(state, cov)
+    state.op_logger.write('calibrate completed')
 
-    cov.elapsed = total_calc_us // CALIBRATE_SAMPLE_SIZE
-    cov.cov = None
-    cov.handicap = handicap
-    cov.calibrated = True
-
-    return cov
+    return path
 
 
-def dryrun(state: State, paths: Iterable[bytes], n_workers: int = 1):
+def dryrun(state: State, paths: Iterable[bytes], n_workers: int):
     '''
     run test cases
+
+    Arguments:
+    ---
+    - state: afl state
+    - paths: inputs
+    - n_workers: no. of workers
     '''
-    pool = ThreadPool(n_workers)
+    for p in paths:
+        state.queue.push(CoverageResult(p))
 
-    def run(path: bytes):
-        try:
-            calibrate(state, path, handicap=0)
-        except Exception as ex:
-            state.exception_logger.write(f'failed to run exception')
+    state.score_changed = True
 
-    pool.map(run, paths)
-    pool.close()
-    pool.join()
+    def run(_):
+        with state.lock:
+            p = state.queue.pop()
 
-    assert bool(state.queue)
+        calibrate(state, p)
+
+        with state.lock:
+            state.update_coverage(p)
+            p.cov = None
+
+            state.fuzzed_queue.push(p)
+
+    if n_workers == 1:
+        for i in range(len(state.queue)):
+            run(i)
+    else:
+        tp = ThreadPool(n_workers)
+        tp.imap_unordered(run, range(len(state.queue)))
+        tp.close()
+        tp.join()
+
+    assert bool(state.fuzzed_queue)
+
+    state.op_logger.write('dryrun completed')
     
 def save_if_interesting(state: State, cov: CoverageResult):
+    '''
+    save if interesting
+
+    Arguments:
+    ---
+    - state: afl state
+    - cov: coverage result
+    '''
     assert cov.cov
 
-    if not state.update_coverage(cov.cov):
+    if not state.update_coverage(cov):
         return False
     
-    if not cov.exception:
-        try:
-            cov = calibrate(state, cov.args, state.queue_cycle - 1)
-            state.queue.push(cov)
-        except Exception as ex:
-            state.op_logger.write(f'Failed to calibrate path due to {ex}')
+    cov.handicap = state.queue_cycle + 1
+    state.queue.push(cov)
+
+    try:
+        calibrate(state, cov)
+        cov.cov = None
+    except Exception as ex:
+        state.op_logger.write(f'Failed to calibrate path due to {ex}')
 
     return True
 
-def fuzz_arg(state: State, arg: bytes):
+def fuzz_arg(state: State, arg: bytes, depth: int = 0):
+    '''
+    fuzz with input
+
+    Arguments:
+    ---
+    - state: afl state
+    - arg: input
+    - depth: depth (or generation)
+    '''
     try:
-        cov = collect(arg, state.ctx_fname, timeout=EXEC_TIMEOUT)
-    except:
-        return
+        cov: CoverageResult = collect(state.entry_module, state.ctx_fname, arg, timeout=EXEC_TIMEOUT)
+    except TimeoutError:
+        return None
     
+    cov.depth = depth + 1
     save_if_interesting(state, cov)
+    return cov

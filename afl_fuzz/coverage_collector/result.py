@@ -15,19 +15,31 @@ def to_bitmap(cov: list[int]) -> bytes:
 
     return bm
 
+def hash(bm: bytes) -> bytes:
+    return md5(bm).digest()[:4]
+
 class CoverageResult:
     '''
     coverage result
     '''
-    def __init__(self, args: bytes, cov: list[int], elapsed: int, exception: dict[str, str] = None):
+    def __init__(self, args: bytes, cov: list[int] = None, elapsed: int = -1, exception: dict[str, str] = None):
         '''
-        create result instance. score is not calculated here.
+        create result instance.
+
+        Arguments:
+        ---
+        - args: input
+        - cov: coverage
+        - elapsed: run time
+        - execption: exception if any
         '''
-        cov = to_bitmap(cov)
+        if cov:
+            cov = to_bitmap(cov)
+            self.cov_cksum = hash(cov)
+            self.bitmap_size = bitmap_size(cov)
 
         self.args = args
-        self.cov_cksum = md5(cov).digest()
-        self.bitmap_size = bitmap_size(cov)
+
         self.elapsed: int = elapsed
         self.exception = exception
 
@@ -39,3 +51,6 @@ class CoverageResult:
         self.calibrated: bool = False
         self.fuzzed: bool = False
         self.favored: bool = False
+
+    def arg_head(self) -> str:
+        return self.args[:4].hex()

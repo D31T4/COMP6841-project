@@ -1,6 +1,6 @@
-from .state import State
-from .config import HAVOC_MAX_MULT, PREFER_QUEUE_CAPACITY
-from .queue import Queue
+from afl_fuzz.afl.state import State
+from afl_fuzz.afl.config import HAVOC_MAX_MULT, PREFER_QUEUE_CAPACITY
+from afl_fuzz.afl.queue import Queue
 from afl_fuzz.coverage_collector.result import CoverageResult
 
 import random
@@ -8,7 +8,16 @@ import random
 
 def calculate_score(state: State, cov: CoverageResult):
     '''
-    
+    calculate score for adjusting fuzzing time
+
+    Arguments:
+    ---
+    - state: afl state
+    - cov: coverage
+
+    Returns:
+    ---
+    - score
     '''
     avg_exec_us = state.avg_total_cal_us
     avg_bitmap_size = state.avg_bitmap_size
@@ -72,7 +81,12 @@ def calculate_score(state: State, cov: CoverageResult):
 
 def update_bitmap_score(state: State, cov: CoverageResult):
     '''
-    
+    update bitmap score
+
+    Arguments:
+    ---
+    - state: afl state
+    - cov: coverage result
     '''
     factor = cov.elapsed * len(cov.args)
 
@@ -88,25 +102,34 @@ def update_bitmap_score(state: State, cov: CoverageResult):
         cov.cov_ref += 1
         state.score_changed = True
         
-        tr.cov_ref -= 1
+        if tr:
+            tr.cov_ref -= 1
         
-        if tr.cov_ref <= 0:
-            tr.cov = None
+            if tr.cov_ref <= 0:
+                tr.cov = None
+
+    state.op_logger.write('update_bitmap_score completed')
 
 
 def cull_queue(state: State):
     '''
-    
+    cull queue.
+
+    Arguments:
+    ---
+    - state: afl state
     '''
-    if not state.score_changed: return
-
-    covered = [False] * state.n_buckets
-
-    favored: int = 0
-
     with state.lock:
+        # join queue
+        state.queue._queue.extend(state.fuzzed_queue)
+        state.fuzzed_queue.clear()
+
+        if not state.score_changed: return
+
         state.score_changed = False
         state.pending_favored = 0
+
+        covered = [False] * state.n_buckets
 
         for el in state.queue:
             el.favored = False
@@ -118,16 +141,15 @@ def cull_queue(state: State):
             for j in range(state.n_buckets):
                 covered[i] |= bool(state.top_rated[j])
 
-            state.top_rated[i].favored = True
-            favored += 1
-            
-            if not state.top_rated[i].fuzzed:
+            if not state.top_rated[i].favored:
                 state.pending_favored += 1
 
+            state.top_rated[i].favored = True
+
         # drop unfavored items from queue probalistically
-        if len(state.queue) > PREFER_QUEUE_CAPACITY and PREFER_QUEUE_CAPACITY > favored:
+        if len(state.queue) > PREFER_QUEUE_CAPACITY and PREFER_QUEUE_CAPACITY > state.pending_favored:
             # expected no. of items after drop = PREFER_QUEUE_CAPACITY
-            keep_prob = (PREFER_QUEUE_CAPACITY - favored) / len(state.queue)
+            keep_prob = (PREFER_QUEUE_CAPACITY - state.pending_favored) / len(state.queue)
 
             new_queue = Queue()
 
@@ -136,3 +158,5 @@ def cull_queue(state: State):
                     new_queue.push(el)
 
             state.queue = new_queue
+
+    state.op_logger.write('cull_queue completed')
