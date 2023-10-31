@@ -10,4 +10,4 @@ class PrintLogger(ILogger):
 
     def write(self, msg: str):
         with self._lock:
-            self._write(f'{datetime.now()}: {msg}')
+            self._write(f'{datetime.now().strftime("%m/%d/%Y, %H:%M:%S")}: {msg}')

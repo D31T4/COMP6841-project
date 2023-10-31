@@ -29,4 +29,4 @@ class FileLogger(ILogger):
     
     def write(self, msg: str):
         with self._lock, open(self.fname, 'a') as f:
-            f.write(f'{datetime.now()}: {msg}')
+            f.write(f'{datetime.now().strftime("%m/%d/%Y, %H:%M:%S")}: {msg}')

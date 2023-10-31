@@ -87,12 +87,11 @@ def collect(src: str, ctx: str, args: bytes, out: str = None, timeout: int = Non
     p = subprocess.Popen(
         [sys.executable, '-c', _compile_code(src, out, args, ctx)], 
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL
+        #stderr=subprocess.DEVNULL
     )
 
     try:
-        if p.wait(timeout=timeout) != 0:
-            raise Exception('failed to collect coverage due to an exception')
+        p.wait(timeout=timeout)
 
         with open(out, 'r') as f:
             result = json.load(f)

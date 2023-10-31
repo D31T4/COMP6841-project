@@ -8,6 +8,9 @@ def bitmap_size(bm: bytes) -> int:
     return 0 + sum(bool(b) for b in bm)
 
 def to_bitmap(cov: list[int]) -> bytes:
+    '''
+    covert coverage output to bitmap
+    '''
     bm = bytearray(len(cov))
 
     for i, c in enumerate(cov):
@@ -16,6 +19,10 @@ def to_bitmap(cov: list[int]) -> bytes:
     return bm
 
 def hash(bm: bytes) -> bytes:
+    '''
+    hash for computing checksum of trace bits
+    '''
+    # just take first 4-bytes of md5 lol
     return md5(bm).digest()[:4]
 
 class CoverageResult:
@@ -51,6 +58,7 @@ class CoverageResult:
         self.calibrated: bool = False
         self.fuzzed: bool = False
         self.favored: bool = False
+        self.trimmed: bool = False
 
     def arg_head(self) -> str:
         return self.args[:4].hex()

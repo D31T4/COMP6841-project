@@ -17,6 +17,10 @@ SKIP_NFAV_NEW_PROB: float = 0.75
 # Minimum input file length at which the effector logic kicks in:
 EFF_MIN_LEN: int = 128
 
+# Maximum effector density past which everything is just fuzzed
+# unconditionally:
+EFF_MAX_PERC: float = 0.9
+
 # Maximum offset for integer addition / subtraction stages:
 ARITH_MAX: int = 35
 
@@ -55,3 +59,12 @@ HAVOC_BLK_LG: int = 1500
 HAVOC_BLK_XL: int = 32768
 
 SKIP_DETERMINISTIC: bool = False
+
+# Limits for the test case trimmer. The absolute minimum chunk size; and
+# the starting and ending divisors for chopping up the input file:
+TRIM_MIN_BYTES: int = 4
+TRIM_START_STEPS: int = 16
+TRIM_END_STEPS: int = 1024
+
+# Maximum size of input file, in bytes
+MAX_FILE: int = 1024

@@ -2,6 +2,7 @@ from threading import Lock
 from uuid import uuid4
 import os
 import random
+from typing import Callable
 
 from afl_fuzz.afl.queue import Queue
 from afl_fuzz.coverage_collector.result import CoverageResult, bitmap_size
@@ -20,7 +21,8 @@ class State:
         ctx_fname: str = None, 
         exception_logger: ILogger = None, 
         op_logger: ILogger = None, 
-        n_buckets: int = 1024
+        n_buckets: int = 1024,
+        on_exception: Callable[[bytes, dict[str, str]], None] = None
     ):
         '''
         Arguments:
@@ -67,6 +69,8 @@ class State:
 
         self.coverage_updated: bool = False
 
+        self.on_exception = on_exception or (lambda *_: None)
+
     def use_ctx(self):
         '''
         write context file
@@ -106,7 +110,7 @@ class State:
             self.op_logger.write(f'new area covered by input: {cov.arg_head()}')
 
             if cov.exception:
-                self.exception_logger.write(f'new exception covered by input: {cov.arg_head()}')
+                self.exception_logger.write(f'new exception covered by input: {cov.arg_head()}, exception: {cov.exception}')
 
         return changed
 

@@ -6,7 +6,8 @@ from typing import Callable
 from afl_fuzz.afl.config import (
     ARITH_MAX, 
     HAVOC_STACK_POW2,
-    HAVOC_BLK_SM, HAVOC_BLK_MD, HAVOC_BLK_LG, HAVOC_BLK_XL
+    HAVOC_BLK_SM, HAVOC_BLK_MD, HAVOC_BLK_LG, HAVOC_BLK_XL,
+    MAX_FILE
 )
 
 import random
@@ -297,10 +298,10 @@ def havoc(buffer: bytearray):
     ---
     - buffer: byte seq
     '''
-    n = len(buffer)
-
     for _ in range(1 << 1 + random.randint(1, HAVOC_STACK_POW2)):
         mut_type = random.randint(0, 14)
+        n = len(buffer)
+
 
         if mut_type == 0:
             # flip bit somewhere
@@ -327,7 +328,7 @@ def havoc(buffer: bytearray):
             # case 7: add to word, random endian
             if n < 2: continue
 
-            idx = random.randrange(n)
+            idx = random.randint(0, n - 2)
             old_val = (buffer[idx] << 8) | buffer[idx + 1]
             offset = random.randint(1, ARITH_MAX)
             factor = 1 if mut_type == 6 else -1
@@ -345,7 +346,7 @@ def havoc(buffer: bytearray):
             # case 9: add to dword, random endian
             if n < 4: continue
 
-            idx = random.randint(0, n - 3)
+            idx = random.randint(0, n - 4)
             old_val = (buffer[idx] << 24) | (buffer[idx + 1] << 16) | (buffer[idx + 2] << 8) | buffer[idx + 3]
             offset = random.randint(1, ARITH_MAX)
             factor = 1 if mut_type == 8 else -1
@@ -366,14 +367,46 @@ def havoc(buffer: bytearray):
 
         elif mut_type == 11 or mut_type == 12:
             # case 11, 12: delete bytes
-            # TODO: not implemented
-            pass
+            # Delete bytes. We're making this a bit more likely
+            # than insertion (the next option) in hopes of keeping
+            # files reasonably small.
+            if n < 2: continue
+
+            del_len = choose_block_len(n - 1)
+            del_from = random.randrange(n - del_len)
+
+            buffer = buffer[:del_from] + buffer[(del_from + del_len):]
+
         elif mut_type == 13:
-            # case 13
-            # TODO: not implemented
-            pass
+            # case 13: insert
+            if len(buffer) + HAVOC_BLK_XL < MAX_FILE:
+                # Clone bytes (75%) or insert a block of constant bytes (25%).
+                actually_clone = random.randrange(4)
+                
+                if actually_clone:
+                    clone_len = choose_block_len(n)
+                    clone_from = random.randint(0, n - clone_len)
+                else:
+                    clone_len = choose_block_len(HAVOC_BLK_XL)
+                    clone_from = 0
+
+                clone_to = random.randrange(n)
+
+                if actually_clone:
+                    buffer = buffer[:clone_to] + buffer[clone_from:(clone_from + clone_len)] + buffer[clone_to:]
+                else:
+                    chunk = bytearray(clone_len)
+                    val = random.randint(0x00, 0xff) if random.randint(0, 1) else buffer[random.randrange(len(buffer))]
+
+                    for i in range(clone_len):
+                        chunk[i] = val
+
+                    buffer = buffer[:clone_to] + chunk + buffer[clone_to]
+
         elif mut_type == 14:
             # case 14: overwrite bytes with random chunk or fixed bytes
+            # Overwrite bytes with a randomly selected chunk (75%) or fixed
+            # bytes (25%).
             # TODO: not implemented
             if n < 2: continue
 
@@ -383,7 +416,7 @@ def havoc(buffer: bytearray):
             copy_from = random.randint(0, n - copy_len)
             copy_to = random.randint(0, n - copy_len)
 
-            if random.randrange > 0.75:
+            if random.random() > 0.75:
                 if copy_from > copy_to:
                     # copy left to right
                     generator = range(copy_len)

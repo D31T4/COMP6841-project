@@ -1,7 +1,7 @@
 '''
 main fuzzing logic
 '''
-from typing import Iterable
+from typing import Iterable, Callable
 import time
 from multiprocessing.pool import ThreadPool
 
@@ -20,7 +20,8 @@ def fuzz(
     op_logger: ILogger = None, 
     max_elpased: int = float('inf'), 
     max_cycles: int = float('inf'), 
-    n_workers: int = 1
+    n_workers: int = 1,
+    on_exception: Callable[[bytes, dict[str, str]], None] = None
 ):
     '''
     main fuzz loop
@@ -35,7 +36,14 @@ def fuzz(
     - max_cycles: max fuzz cycles
     - n_workers: no. of worker threads
     '''
-    afl = State(entry, n_buckets=TRACE_BUCKETS, exception_logger=exception_logger, op_logger=op_logger)
+    afl = State(
+        entry, 
+        n_buckets=TRACE_BUCKETS, 
+        exception_logger=exception_logger, 
+        op_logger=op_logger, 
+        on_exception=on_exception
+    )
+    
     afl.use_ctx()
 
     pool: ThreadPool = None
@@ -77,7 +85,7 @@ def fuzz(
             afl.should_splice = not afl.coverage_updated
             afl.coverage_updated = False
 
-            # TODO: show stats
+            # show stats
             afl.op_logger.write(f'completed fuzz cycle = {afl.queue_cycle}')
             afl.queue_cycle += 1
 

@@ -2,4 +2,4 @@
 inject overrides
 '''
 
-import coverage_collector.override
+import afl_fuzz.coverage_collector.override

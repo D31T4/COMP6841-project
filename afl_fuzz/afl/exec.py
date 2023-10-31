@@ -6,7 +6,14 @@ from afl_fuzz.coverage_collector.result import CoverageResult
 
 from afl_fuzz.afl.state import State
 from afl_fuzz.afl.score import update_bitmap_score
-from afl_fuzz.afl.config import EXEC_TIMEOUT, CALIBRATE_SAMPLE_SIZE
+
+from afl_fuzz.afl.config import (
+    EXEC_TIMEOUT, 
+    CALIBRATE_SAMPLE_SIZE,
+    TRIM_MIN_BYTES,
+    TRIM_END_STEPS,
+    TRIM_START_STEPS
+)
 
 def calibrate(state: State, path: CoverageResult) -> CoverageResult:
     '''
@@ -21,8 +28,12 @@ def calibrate(state: State, path: CoverageResult) -> CoverageResult:
     for _ in range(CALIBRATE_SAMPLE_SIZE):
         try:
             cov = collect(state.entry_module, state.ctx_fname, path.args, timeout=EXEC_TIMEOUT)
-        except:
-            state.exception_logger.write(f'failed to run exception')
+
+            if cov.exception:
+                state.on_exception(cov.args, cov.exception)
+
+        except Exception as ex:
+            state.exception_logger.write(f'failed to run due to an exception: {ex}')
             return None
 
         total_bitmap_size += cov.bitmap_size
@@ -126,9 +137,68 @@ def fuzz_arg(state: State, arg: bytes, depth: int = 0):
     '''
     try:
         cov: CoverageResult = collect(state.entry_module, state.ctx_fname, arg, timeout=EXEC_TIMEOUT)
+
+        if cov.exception:
+            state.on_exception(cov.args, cov.exception)
+        
     except TimeoutError:
         return None
     
     cov.depth = depth + 1
     save_if_interesting(state, cov)
     return cov
+
+def next_p2(val: int):
+    ret: int = 1
+
+    while val > ret:
+        ret <<= 1
+
+    return ret
+
+def trim_case(state: State, path: CoverageResult):
+    if len(path.args) < 5: return False
+    
+    # Select initial chunk len, starting with large steps
+    len_p2 = next_p2(len(path.args))
+
+    remove_len = max(len_p2 // TRIM_START_STEPS, TRIM_MIN_BYTES)
+
+    # Continue until the number of steps gets too high or the stepover
+    # gets too small.
+    while remove_len >= max(len_p2 // TRIM_END_STEPS, TRIM_MIN_BYTES):
+        remove_pos = remove_len
+
+        trimmed: bool = False
+
+        while remove_pos < len(path.args):
+            trim_avail = min(remove_len, len(path.args) - remove_pos)
+
+            out_buf = path.args[:remove_pos] + path.args[(path + trim_avail):]
+
+            result: CoverageResult = collect(state.entry_module, state.ctx_fname, out_buf)
+            if not result: return False
+
+            # If the deletion had no impact on the trace, make it permanent. This
+            # isn't perfect for variable-path inputs, but we're just making a
+            # best-effort pass, so it's not a big deal if we end up with false
+            # negatives every now and then.
+            if result.cov_cksum == path.cov_cksum:
+                path.cov = result.cov
+                path.bitmap_size = result.bitmap_size
+                path.elapsed = result.elapsed
+                path.args = result.args
+                path.exception = result.exception
+
+                len_p2 = next_p2(len(path.args))
+
+                trimmed = True
+            else:
+                remove_pos += remove_len
+
+        remove_len >>= 1
+
+        if trimmed: 
+            update_bitmap_score(state, path)
+
+        return trimmed
