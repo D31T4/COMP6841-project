@@ -52,7 +52,7 @@ def fuzz_one(state: State, path: CoverageResult):
         state.op_logger.write('fuzz_one skipped')
         return False
     
-    if state.pending_favored:
+    if state.pending_favored > 0:
         # If we have any favored, non-fuzzed new arrivals in the queue,
         # possibly skip to them at the expense of already-fuzzed or non-favored
         # cases.
@@ -239,7 +239,7 @@ def fuzz_one(state: State, path: CoverageResult):
 
         for _ in range(stage_max):
             havoc(out_buf)
-
+        state.op_logger.write(f'fuzz_one len: {len(out_buf)}')
         if not fuzz_arg(state, bytes(out_buf), path.depth):
             return done()
         else:

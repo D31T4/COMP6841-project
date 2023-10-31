@@ -159,4 +159,6 @@ def cull_queue(state: State):
 
             state.queue = new_queue
 
+        state.n_entries = len(state.queue)
+
     state.op_logger.write('cull_queue completed')

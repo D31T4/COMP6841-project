@@ -174,7 +174,7 @@ def trim_case(state: State, path: CoverageResult):
         while remove_pos < len(path.args):
             trim_avail = min(remove_len, len(path.args) - remove_pos)
 
-            out_buf = path.args[:remove_pos] + path.args[(path + trim_avail):]
+            out_buf = path.args[:remove_pos] + path.args[(remove_pos + trim_avail):]
 
             result: CoverageResult = collect(state.entry_module, state.ctx_fname, out_buf)
             if not result: return False

@@ -401,7 +401,7 @@ def havoc(buffer: bytearray):
                     for i in range(clone_len):
                         chunk[i] = val
 
-                    buffer = buffer[:clone_to] + chunk + buffer[clone_to]
+                    buffer = buffer[:clone_to] + chunk + buffer[clone_to:]
 
         elif mut_type == 14:
             # case 14: overwrite bytes with random chunk or fixed bytes
@@ -463,9 +463,9 @@ def locate_diffs(s1: bytearray, s2: bytearray):
 
     return f_loc, l_loc
 
-def splice(target: bytearray, source: bytes) -> bytearray:
+def splice_afl(target: bytearray, source: bytes) -> bytes:
     '''
-    splice target **in place**
+    splice target **in place**. original implementation in AFL.
 
     Arguments:
     ---
@@ -478,13 +478,24 @@ def splice(target: bytearray, source: bytes) -> bytearray:
     '''
     f_loc, l_loc = locate_diffs(source, target)
 
-    if f_loc == -1: f_loc = 0
-    if l_loc == -1: l_loc = min(len(source) - 1, len(target) - 1)
+    # Find a suitable splicing location, somewhere between the first and
+    # the last differing byte. Bail out if the difference is just a single
+    # byte or so.
+    if f_loc < 0 or l_loc < 2 or l_loc == f_loc:
+        return target
 
     split_at = random.randint(f_loc, l_loc)
 
-    for i in range(split_at, len(source)):
+    for i in range(split_at, min(len(source), len(target))):
         target[i] = source[i]
 
     return target
-    
+
+def splice(target: bytearray, source: bytes) -> bytes:
+    '''
+    splice target. choose first half from `target`, second half from `source`.
+    '''
+    t_split = random.randint(1, len(target))
+    s_split = random.randint(0, len(source) - 1)
+
+    return target[:t_split] + source[s_split:]

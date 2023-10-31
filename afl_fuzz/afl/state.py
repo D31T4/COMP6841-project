@@ -71,6 +71,8 @@ class State:
 
         self.on_exception = on_exception or (lambda *_: None)
 
+        self.n_entries: int = 0
+
     def use_ctx(self):
         '''
         write context file
@@ -133,10 +135,6 @@ class State:
             return self.queue.sample()
         else:
             return self.fuzzed_queue.sample()
-        
-    @property
-    def n_entries(self):
-        return len(self.queue) + len(self.fuzzed_queue)
     
     def estimate_coverage(self):
         return bitmap_size(self.covered) / self.n_buckets

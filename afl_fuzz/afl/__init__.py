@@ -18,7 +18,7 @@ def fuzz(
     seed: Iterable[bytes], 
     exception_logger: ILogger = None, 
     op_logger: ILogger = None, 
-    max_elpased: int = float('inf'), 
+    max_elapsed: int = float('inf'), 
     max_cycles: int = float('inf'), 
     n_workers: int = 1,
     on_exception: Callable[[bytes, dict[str, str]], None] = None
@@ -65,7 +65,7 @@ def fuzz(
         afl.coverage_updated = True
         afl.should_splice = False
 
-        while (time.time() - start < max_elpased) and afl.queue_cycle < max_cycles:
+        while (time.time() - start < max_elapsed) and afl.queue_cycle < max_cycles:
             # fuzz loop
             cull_queue(afl)
 
