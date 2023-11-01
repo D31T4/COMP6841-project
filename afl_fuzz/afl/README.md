@@ -39,6 +39,8 @@ This above process is repeated iteratively.
 
 We implemented most of the algorithmic features of AFL. Except the adaptive computation part: which AFL will adjust some parameters based on score and runtime, allowing certain test cases to be ran more frequently.
 
+We assumed the test program is deterministic. For randomized algorithms, we can sample each run a few times and use the combined coverage.
+
 Our implementation is not concurrent. We used `ThreadPool` in our implementation and it subjects to the global interpreter lock.
 
 ## Usage
