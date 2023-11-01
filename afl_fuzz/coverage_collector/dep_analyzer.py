@@ -72,7 +72,10 @@ def get_deps(entry: str, omit: list[Callable[[pathlib.Path], bool]] = None) -> l
         fname, pkg = stack.pop()
         
         for name in ast_imports(fname):
-            spec = find_spec(name, pkg)
+            try:
+                spec = find_spec(name, pkg)
+            except:
+                continue
 
             # sys modules: has_location = False
             if spec == None or not spec.has_location:

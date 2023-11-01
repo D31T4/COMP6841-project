@@ -239,7 +239,7 @@ def fuzz_one(state: State, path: CoverageResult):
 
         for _ in range(stage_max):
             havoc(out_buf)
-        state.op_logger.write(f'fuzz_one len: {len(out_buf)}')
+        
         if not fuzz_arg(state, bytes(out_buf), path.depth):
             return done()
         else:

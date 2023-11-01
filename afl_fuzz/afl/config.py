@@ -1,4 +1,8 @@
+'''
+config settings
+'''
 
+# no. of buckets used in sketch
 TRACE_BUCKETS: int = 1024
 
 # Default timeout for fuzzed code (milliseconds).
@@ -15,7 +19,7 @@ SKIP_NFAV_OLD_PROB: float = 0.95
 SKIP_NFAV_NEW_PROB: float = 0.75
 
 # Minimum input file length at which the effector logic kicks in:
-EFF_MIN_LEN: int = 1 #128
+EFF_MIN_LEN: int = 128
 
 # Maximum effector density past which everything is just fuzzed
 # unconditionally:
@@ -58,7 +62,7 @@ HAVOC_BLK_MD: int = 128
 HAVOC_BLK_LG: int = 1500
 HAVOC_BLK_XL: int = 32768
 
-SKIP_DETERMINISTIC: bool = True
+SKIP_DETERMINISTIC: bool = False
 
 # Limits for the test case trimmer. The absolute minimum chunk size; and
 # the starting and ending divisors for chopping up the input file:
