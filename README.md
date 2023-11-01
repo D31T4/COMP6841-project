@@ -16,9 +16,10 @@ In short, poke the test program and see what happens by generating random inputs
 
 # Usage
 
-1. Download the project
-2. Run `pip install -e .` at the project root to install the project as an editable package in pip.
-3. Run any `fuzz.py` in the demo folder. Or use it to fuzz your own (see instructions in [afl_fuzz/afl/README.md](afl_fuzz/afl/README.md)).
+1. Download the project.
+2. Install dependencies listed in `requirements.txt`.
+3. Run `pip install -e .` at the project root to install the project as an editable package in pip.
+4. Run any `fuzz.py` in the demo folder. Or use it to fuzz your own (see instructions in [afl_fuzz/afl/README.md](afl_fuzz/afl/README.md)).
 
 # Technical Details
 
