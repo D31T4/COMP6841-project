@@ -14,7 +14,7 @@ We vary the input (a sequence of bytes) to optimize the objective. We now have a
 
 AFL optimizes coverage and minimizes a score function $f(x)=\text{size}\cdot\text{runtime}$. It keeps the cases with the minimum score in each bucket in the next cycle.
 
-AFL minimizes the number of test cases kept using a greedy approximation. (Maybe have something to do with vertex cover, but not 100% sure)
+AFL terminates samples in the previous generation to minimize the number of test cases kept using a greedy approximation. (Maybe have something to do with vertex cover, but not 100% sure)
 
 AFL also reduces the average size of test cases by 1) setting a higher probability of deletion in mutation; and 2) trim the test cases such that size is reduced but the coverage remains same.
 
@@ -43,7 +43,7 @@ We implemented most of the algorithmic features of AFL. Except:
 
 We assumed the test program is deterministic. For randomized algorithms, we can sample each run a few times and use the combined coverage.
 
-Our implementation is not concurrent. We used `ThreadPool` in our implementation and it subjects to the global interpreter lock.
+Our implementation is not concurrent. We used `ThreadPool` in our implementation and it subjects to the global interpreter lock. And ours keep the test cases in memory to reduce complexity of our implementation, while AFL stores metadata in memory and the byte sequence in disc to reduce memory requirements when handling large population of test cases.
 
 ## Usage
 

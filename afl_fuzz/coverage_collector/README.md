@@ -62,7 +62,7 @@ and collection (list/dict/set) comprehension (e.g. `[x for x in range(n)]`).
 
 ## Usage
 
-Place your entry point in the same folder as your Python code. Name of your entry point must be a valid Python module.
+Place your entry point in the same folder as your Python code. Name of your entry point must be a valid Python module, and it must contain a `main(arg: bytes)` function as it will be used as our entry point for trace.
 
 ```{python}
 from afl_fuzz.coverage_collector.context import Context
